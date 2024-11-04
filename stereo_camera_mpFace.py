@@ -1,20 +1,22 @@
 import cv2
 import mediapipe as mp
 
-# Initialize MediaPipe Face Mesh
-mp_face_mesh = mp.solutions.face_mesh
+# Initialize MediaPipe Pose Mesh
+mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 
-# Initialize Face Mesh with static_image_mode=False for video, max_num_faces=2 to detect up to 2 faces
-face_mesh = mp_face_mesh.FaceMesh(
-    max_num_faces=2,
-    refine_landmarks=True,  # This option provides iris tracking landmarks as well
+# Initialize Pose Mesh with static_image_mode=False for video
+pose_mesh = mp_pose.Pose(
+    static_image_mode=False,  # Set to False for video input so it tracks over frames
+    model_complexity=1,       # 0, 1, or 2. Higher values for more accurate landmark points
+    smooth_landmarks=True,    # Smooth landmarks to avoid jitter in video processing
+    enable_segmentation=False, # Set to True if you want segmentation (background removal)
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5
 )
 
-landmark_indices = [0, 10, 20, 30, 40, 50, 60, 70, 80]
+landmark_indices = [0, 1, 2, 3, 4, 11, 12, 13, 14]
 lm_kiri = []
 lm_kanan = []
 
@@ -26,8 +28,8 @@ def mpLm2px(lm):
 def process_mp(frame_id,frame): 
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     
-    # Process the frame for face landmarks detection
-    result = face_mesh.process(frame_rgb)
+    # Process the frame for pose landmarks detection
+    result = pose_mesh.process(frame_rgb)
 
     global lm_kiri 
     global lm_kanan
@@ -37,37 +39,21 @@ def process_mp(frame_id,frame):
     elif frame_id == 1:
         lm_kanan = []
 
-    # Draw face landmarks on the frame
-    if result.multi_face_landmarks:
-        # for face_landmarks in result.multi_face_landmarks:
-            # Draw landmarks
-            # mp_drawing.draw_landmarks(
-            #     image=frame,
-            #     landmark_list=face_landmarks,
-            #     connections=mp_face_mesh.FACEMESH_TESSELATION,  # Tesselation (triangular mesh)
-            #     landmark_drawing_spec=None,  # Use default drawing spec for landmarks
-            #     connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_tesselation_style()
-            # )
-
-            # Example: Get and print all landmark coordinates for the first face
-            # for id, lm in enumerate(face_landmarks.landmark):
-            #     ih, iw, _ = frame.shape
-            #     x, y = int(lm.x * iw), int(lm.y * ih)
-            #     print(f'Landmark {id}: ({x}, {y})')
-
+    # Draw pose landmarks on the frame
+    if result.pose_landmarks:
         for idx in landmark_indices:
-            lm_1 = result.multi_face_landmarks[0].landmark[idx]    
+            lm_1 = result.pose_landmarks.landmark[idx]
             px, py = mpLm2px(lm_1)
 
+            # Store landmarks for left and right frames
             if frame_id == 0:
-                lm_kiri.append((int(px),int(py)))
-                # print(f"Landmark {idx} Kiri: (x: {int(px)}, y: {int(py)})")
+                lm_kiri.append((px, py))
             elif frame_id == 1:
-                lm_kanan.append((int(px),int(py)))
-                # print(f"Landmark {idx} Kanan: (x: {int(px)}, y: {int(py)})")
+                lm_kanan.append((px, py))
 
+            # Draw a green circle on the landmark
             try:
-                cv2.circle(frame, (int(px), int(py)), 5, (0, 255, 0), -1)  # Draw a green circle
+                cv2.circle(frame, (int(px), int(py)), 5, (0, 255, 0), -1)
             except Exception as e:
                 print(f"Error drawing circle: {e}")
 
@@ -77,8 +63,14 @@ def process_korespondensi_1_1():
     if len(lm_kiri) == len(lm_kanan) == len(landmark_indices): # Memastikan kedua gambar mendeteksi landmark yang sama
         lm_it = 0
         for idx in landmark_indices:
-            print(f'if[{idx}]: {lm_kiri[lm_it]} || {lm_kanan[lm_it]}')
+            # Filter from mines x or y 
+            if lm_kiri[lm_it][0] < 0 or lm_kanan[lm_it][0] < 0 or lm_kiri[lm_it][1] < 0 or lm_kanan[lm_it][1] < 0:
+                lm_it += 1
+                continue
+
+            print(f'pt[{idx}]: {lm_kiri[lm_it]} || {lm_kanan[lm_it]}')
             lm_it += 1
+        print("=====================================")
 
 
 # Open the webcam
