@@ -30,16 +30,8 @@ R = stereo_params['R']
 T = stereo_params['T']
 
 # Define the dimensions of the checkerboard
-CHECKERBOARD = (8, 5)
+CHECKERBOARD = (8, 6)
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-
-# Initialize webcams
-cap0 = cv2.VideoCapture(0,cv2.CAP_DSHOW)  # Camera 0
-cap1 = cv2.VideoCapture(2,cv2.CAP_DSHOW)  # Camera 1
-
-if not cap0.isOpened() or not cap1.isOpened():
-    print("Error: Could not open video devices.")
-    exit()
 
 # Function to apply 3D rotation
 def rotate_3d(points, axis, angle):
@@ -69,13 +61,20 @@ def rotate_3d(points, axis, angle):
 
 iteration = 0
 
+cap = cv2.VideoCapture("/dev/v4l/by-id/usb-SunplusIT_Inc_SPCA2100_PC_Camera-video-index0")
+
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 2560)  
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  
+cap.set(cv2.CAP_PROP_FPS, 30)
+
 while True:
-    ret0, frame0 = cap0.read()
-    ret1, frame1 = cap1.read()
+    ret, frame = cap.read()
+
+    if not ret:
+        continue
     
-    if not ret0 or not ret1:
-        print("Error: Could not read frames.")
-        break
+    frame0 = frame[:, :1280]
+    frame1 = frame[:, 1280:]
 
     # Convert to grayscale
     gray0 = cv2.cvtColor(frame0, cv2.COLOR_BGR2GRAY)
@@ -86,6 +85,7 @@ while True:
     ret1, corners1 = cv2.findChessboardCorners(gray1, CHECKERBOARD, None)
 
     if ret0 and ret1:
+        print(f'Iteration: {iteration}')
         # Refine corner locations
         corners0 = cv2.cornerSubPix(gray0, corners0, (11, 11), (-1, -1), criteria)
         corners1 = cv2.cornerSubPix(gray1, corners1, (11, 11), (-1, -1), criteria)
@@ -117,6 +117,8 @@ while True:
         # Apply 3D rotations
       #  points_3d = rotate_3d(points_3d, 'z', 45)
       #  points_3d = rotate_3d(points_3d, 'x', -60)
+
+        print("Plotting 3D points...")
         
         # Plot the points
         fig = plt.figure()
@@ -134,6 +136,8 @@ while True:
         # Show the plot
         plt.show(block=False)
         plt.pause(0.001)
+
+        print("Saving 3D plot...")
         
         # Save the plot
         plt.savefig(f'3d_plot.png')

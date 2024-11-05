@@ -10,26 +10,23 @@ import numpy as np
 import os
 import glob
 
-CHECKERBOARD = (8, 5)
-CHECKERBOARD = (8, 5)
+CHECKERBOARD = (8, 6)
+CHECKERBOARD = (8, 6)
 
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-
-
 
 # Define the dimensions of the checkerboard
 
 # Calibration part
 
+def Kamera(CHECKERBOARD = (8, 6)):
 
+    cap = cv2.VideoCapture("/dev/v4l/by-id/usb-SunplusIT_Inc_SPCA2100_PC_Camera-video-index0")
 
-def Kamera(CHECKERBOARD = (8, 5)):
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 2560)  
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  
+    cap.set(cv2.CAP_PROP_FPS, 30)
 
-
-    # Initialize webcams
-    cap1 = cv2.VideoCapture(1,cv2.CAP_DSHOW)  # First camera
-    cap2 = cv2.VideoCapture(2,cv2.CAP_DSHOW)  # Second camera
-    
     # Create directories to save images
     os.makedirs('cam0', exist_ok=True)
     os.makedirs('cam1', exist_ok=True)
@@ -63,11 +60,13 @@ def Kamera(CHECKERBOARD = (8, 5)):
     imgpoints2 = []  # 2d points in image plane for camera 2.
     
     while True:
-        ret1, frame1 = cap1.read()
-        ret2, frame2 = cap2.read()
-        
-        if not ret1 or not ret2:
+        ret, frame = cap.read()
+
+        if not ret:
             continue
+        
+        frame1 = frame[:, :1280]
+        frame2 = frame[:, 1280:]
         
         # Concatenate the frames horizontally
         combined_frame = np.hstack((frame1, frame2))
@@ -78,6 +77,8 @@ def Kamera(CHECKERBOARD = (8, 5)):
     
         ret1, corners1 = cv2.findChessboardCorners(gray1, CHECKERBOARD, None)
         ret2, corners2 = cv2.findChessboardCorners(gray2, CHECKERBOARD, None)
+
+        cv2.imshow('frame', combined_frame)
     
         if ret1 and ret2:
             objpoints.append(objp)
@@ -234,5 +235,5 @@ def perform_stereo_calibration(checkerboard_size):
             print("Stereo calibration failed")
 
 # Perform the stereo calibration
-Kamera() 
+# Kamera() 
 perform_stereo_calibration(CHECKERBOARD)
