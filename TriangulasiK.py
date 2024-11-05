@@ -20,6 +20,8 @@ matplotlib.use('TkAgg')  # Use TkAgg backend for interactive display
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import os
+import glob
+
 
 # os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = "/usr/lib/x86_64-linux-gnu/qt5/plugins"
 
@@ -40,6 +42,12 @@ T = stereo_params['T']
 # Define the dimensions of the checkerboard
 CHECKERBOARD = (8, 6)
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+
+os.makedirs('hasil_plot', exist_ok=True)
+files_hasil_plot = glob.glob('hasil_plot/*')
+for f in files_hasil_plot:
+    os.remove(f)
+
 
 # Function to apply 3D rotation
 def rotate_3d(points, axis, angle):
@@ -126,8 +134,6 @@ while True:
     #    points_3d = rotate_3d(points_3d, 'z', 45)
     #    points_3d = rotate_3d(points_3d, 'x', -60)
 
-        print("Plotting 3D points...")
-
         # print all points 
         # for i in range(points_3d.shape[1]):
         #     print(f'Point {i}: {points_3d[:, i]}')
@@ -156,12 +162,12 @@ while True:
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
 
-        # Show 3d plot 
-        # plt.show()
-        
         # # Show the plot
         plt.show(block=False)
         plt.pause(1)
+
+        # Save based on iteration 
+        plt.savefig(f'hasil_plot/3d_plot_{iteration}.png')
 
         # print("Saving 3D plot...")
         
