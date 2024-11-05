@@ -14,8 +14,16 @@ Created on Thu May 30 10:30:29 2024
 
 import cv2
 import numpy as np
+import matplotlib
+# matplotlib.use('Agg')  # Use non-interactive backend to avoid Qt conflicts
+matplotlib.use('TkAgg')  # Use TkAgg backend for interactive display
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import os
+
+# os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = "/usr/lib/x86_64-linux-gnu/qt5/plugins"
+
+plt.ion()
 
 # Load the camera calibration parameters
 camera0_params = np.load('camera0_calibration.npz')
@@ -115,32 +123,50 @@ while True:
         points_3d = points_4d[:3] / points_4d[3]
         
         # Apply 3D rotations
-      #  points_3d = rotate_3d(points_3d, 'z', 45)
-      #  points_3d = rotate_3d(points_3d, 'x', -60)
+    #    points_3d = rotate_3d(points_3d, 'z', 45)
+    #    points_3d = rotate_3d(points_3d, 'x', -60)
 
         print("Plotting 3D points...")
+
+        # print all points 
+        # for i in range(points_3d.shape[1]):
+        #     print(f'Point {i}: {points_3d[:, i]}')
+        # print("=====================================")
         
+        # Transpose the array so that points_3d[:, 0] is x, points_3d[:, 1] is y, points_3d[:, 2] is z
+        # points_3d = points_3d.T
+
+        # print(points_3d[0])
+        # print("=====================================")
+        # print(points_3d[1])
+        # print("=====================================")
+        # print(points_3d[2])
+        # print("=====================================")
+
         # Plot the points
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.scatter(points_3d[0], points_3d[1], points_3d[2])
-        
+
         # Initialize plot limits
         ax.set_xlim([-10, 10])
         ax.set_ylim([-10, 10])
-        ax.set_zlim([-10, 10])
+        ax.set_zlim([0, 100])
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
-        
-        # Show the plot
-        plt.show(block=False)
-        plt.pause(0.001)
 
-        print("Saving 3D plot...")
+        # Show 3d plot 
+        # plt.show()
         
-        # Save the plot
-        plt.savefig(f'3d_plot.png')
+        # # Show the plot
+        plt.show(block=False)
+        plt.pause(1)
+
+        # print("Saving 3D plot...")
+        
+        # # Save the plot
+        # plt.savefig(f'3d_plot.png')
         plt.close()
         
         iteration += 1
