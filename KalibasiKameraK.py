@@ -10,16 +10,20 @@ import numpy as np
 import os
 import glob
 
-CHECKERBOARD = (8, 6)
-CHECKERBOARD = (8, 6)
+CHECKERBOARD = (10, 7)
+CHECKERBOARD = (10, 7)
+square_size = 50 # mm
 
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+
+cam0_problematic_frames = []
+cam1_problematic_frames = []
 
 # Define the dimensions of the checkerboard
 
 # Calibration part
 
-def Kamera(CHECKERBOARD = (8, 6)):
+def Kamera(CHECKERBOARD = (10, 7)):
 
     cap = cv2.VideoCapture("/dev/v4l/by-id/usb-SunplusIT_Inc_SPCA2100_PC_Camera-video-index0")
 
@@ -43,6 +47,7 @@ def Kamera(CHECKERBOARD = (8, 6)):
         
     objp = np.zeros((CHECKERBOARD[0] * CHECKERBOARD[1], 3), np.float32)
     objp[:, :2] = np.mgrid[0:CHECKERBOARD[0], 0:CHECKERBOARD[1]].T.reshape(-1, 2)
+    objp = objp * square_size
     
     # Arrays to store object points and image points from all the images.
     objpoints = []  # 3d point in real world space
@@ -53,6 +58,7 @@ def Kamera(CHECKERBOARD = (8, 6)):
     image_counter = 0
     objp = np.zeros((CHECKERBOARD[0] * CHECKERBOARD[1], 3), np.float32)
     objp[:, :2] = np.mgrid[0:CHECKERBOARD[0], 0:CHECKERBOARD[1]].T.reshape(-1, 2)
+    objp = objp * square_size
     
     # Arrays to store object points and image points from all the images.
     objpoints = []  # 3d point in real world space
@@ -65,8 +71,8 @@ def Kamera(CHECKERBOARD = (8, 6)):
         if not ret:
             continue
         
-        frame1 = frame[:, :1280]
-        frame2 = frame[:, 1280:]
+        frame2 = frame[:, :1280]
+        frame1 = frame[:, 1280:]
         
         # Concatenate the frames horizontally
         combined_frame = np.hstack((frame1, frame2))
@@ -78,7 +84,7 @@ def Kamera(CHECKERBOARD = (8, 6)):
         ret1, corners1 = cv2.findChessboardCorners(gray1, CHECKERBOARD, None)
         ret2, corners2 = cv2.findChessboardCorners(gray2, CHECKERBOARD, None)
 
-        cv2.imshow('frame', combined_frame)
+        # cv2.imshow('frame', combined_frame)
     
         if ret1 and ret2:
             objpoints.append(objp)
@@ -109,7 +115,9 @@ def Kamera(CHECKERBOARD = (8, 6)):
             cv2.putText(combined_frame_with_corners, f'Image count: {image_counter}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
             
             # Display the combined frame with corners and counter
-            cv2.imshow('Img', combined_frame_with_corners)
+
+            resized_combined_frame_with_corners = cv2.resize(combined_frame_with_corners, None, fx=0.5, fy=0.5)
+            cv2.imshow('Img', resized_combined_frame_with_corners)
             
             image_counter += 1
         else:
@@ -124,7 +132,8 @@ def Kamera(CHECKERBOARD = (8, 6)):
             cv2.putText(combined_frame, f'Image count: {image_counter}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
             
             # Display the combined grayscale images
-            cv2.imshow('Img', combined_frame)
+            resized_combined_frame = cv2.resize(combined_frame, None, fx=0.5, fy=0.5)
+            cv2.imshow('Img', resized_combined_frame)
     
         if cv2.waitKey(500) & 0xFF == ord('q'):
             break
@@ -136,6 +145,7 @@ def Kamera(CHECKERBOARD = (8, 6)):
 def calibrate_camera(image_dir, checkerboard_size):
     objp = np.zeros((checkerboard_size[0] * checkerboard_size[1], 3), np.float32)
     objp[:, :2] = np.mgrid[0:checkerboard_size[0], 0:checkerboard_size[1]].T.reshape(-1, 2)
+    objp = objp * square_size
     
     objpoints = []  # 3d point in real world space
     imgpoints = []  # 2d points in image plane
@@ -153,6 +163,14 @@ def calibrate_camera(image_dir, checkerboard_size):
             objpoints.append(objp)
             corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
             imgpoints.append(corners2)
+        else:
+            if image_dir == 'cam0':
+                print(f"{image_dir} problematic frame: {fname}")
+                cam0_problematic_frames.append(fname)
+            else:
+                print(f"{image_dir} problematic frame: {fname}")
+                cam1_problematic_frames.append(fname)
+
     
     if len(objpoints) == 0 or len(imgpoints) == 0:
         raise ValueError(f"No valid images found in {image_dir} for calibration.")
@@ -160,7 +178,7 @@ def calibrate_camera(image_dir, checkerboard_size):
     ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
     
     if ret:
-        print(f"Calibration successful for {image_dir}")
+        print(f"Calibration successful for {image_dir} with {len(objpoints)} images")
     else:
         print(f"Calibration failed for {image_dir}")
     
@@ -169,6 +187,7 @@ def calibrate_camera(image_dir, checkerboard_size):
 def read_points(image_dir, checkerboard_size):
     objp = np.zeros((checkerboard_size[0] * checkerboard_size[1], 3), np.float32)
     objp[:, :2] = np.mgrid[0:checkerboard_size[0], 0:checkerboard_size[1]].T.reshape(-1, 2)
+    objp = objp * square_size
     
     objpoints = []  # 3d point in real world space
     imgpoints = []  # 2d points in image plane
@@ -182,7 +201,11 @@ def read_points(image_dir, checkerboard_size):
         
         ret, corners = cv2.findChessboardCorners(gray, checkerboard_size, None)
         
-        if ret:
+        if ret and image_dir == 'cam0' and fname not in cam0_problematic_frames:
+            objpoints.append(objp)
+            corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+            imgpoints.append(corners2)
+        elif ret and image_dir == 'cam1' and fname not in cam1_problematic_frames:
             objpoints.append(objp)
             corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
             imgpoints.append(corners2)
@@ -215,6 +238,8 @@ def perform_stereo_calibration(checkerboard_size):
         
         if len(objpoints0) == 0 or len(imgpoints0) == 0 or len(objpoints1) == 0 or len(imgpoints1) == 0:
             raise ValueError("Not enough valid points found for stereo calibration.")
+        
+        print(f'{len(objpoints0)} || {len(imgpoints0)} || {len(objpoints1)} || {len(imgpoints1)}')
         
         # Perform stereo calibration
         print("Performing stereo calibration...")

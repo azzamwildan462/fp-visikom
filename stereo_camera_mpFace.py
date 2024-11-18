@@ -62,14 +62,23 @@ def process_mp(frame_id,frame):
 def process_korespondensi_1_1():
     if len(lm_kiri) == len(lm_kanan) == len(landmark_indices): # Memastikan kedua gambar mendeteksi landmark yang sama
         lm_it = 0
+
+        mp_kiri_filtered = []
         for idx in landmark_indices:
             # Filter from mines x or y 
             if lm_kiri[lm_it][0] < 0 or lm_kanan[lm_it][0] < 0 or lm_kiri[lm_it][1] < 0 or lm_kanan[lm_it][1] < 0:
                 lm_it += 1
                 continue
 
-            print(f'pt[{idx}]: {lm_kiri[lm_it]} || {lm_kanan[lm_it]}')
+            # print(f'pt[{idx}]: {lm_kiri[lm_it]} || {lm_kanan[lm_it]}')
+
+            mp_kiri_filtered.append(lm_kiri[lm_it])
+
             lm_it += 1
+        # print("=====================================")
+
+
+        print(mp_kiri_filtered)
         print("=====================================")
 
 

@@ -101,7 +101,6 @@ while True:
     ret1, corners1 = cv2.findChessboardCorners(gray1, CHECKERBOARD, None)
 
     if ret0 and ret1:
-        print(f'Iteration: {iteration}')
         # Refine corner locations
         corners0 = cv2.cornerSubPix(gray0, corners0, (11, 11), (-1, -1), criteria)
         corners1 = cv2.cornerSubPix(gray1, corners1, (11, 11), (-1, -1), criteria)
@@ -112,23 +111,40 @@ while True:
         
         # Concatenate the frames horizontally
         combined_frame_with_corners = np.hstack((frame0_with_corners, frame1_with_corners))
+
+        # Save image to file 
+        cv2.imwrite(f'hasil_plot/image_{iteration}.jpg', combined_frame_with_corners)
         
         # Display the combined frame with corners
-        cv2.imshow('Chessboard Corners', combined_frame_with_corners)
+        resized_combined_frame_with_corners = cv2.resize(combined_frame_with_corners, None, fx=0.5, fy=0.5)
+        cv2.imshow('Chessboard Corners', resized_combined_frame_with_corners)
+
+        # print(corners0.shape)
+        # print(corners0)
+        # print("=====================================")
         
         # Convert corners to the correct format for triangulation
         p0 = np.array(corners0).reshape(-1, 2).T  # Shape (2, n)
         p1 = np.array(corners1).reshape(-1, 2).T  # Shape (2, n)
+
+        # print(p0)
+        # print("=====================================")
         
         # Compute projection matrices
         P0 = np.dot(camera_matrix0, np.hstack((np.eye(3), np.zeros((3, 1)))))
         P1 = np.dot(camera_matrix1, np.hstack((R, T.reshape(3, 1))))
+
+        # print(P0)
+        # print("=====================================")
         
         # Perform triangulation
         points_4d = cv2.triangulatePoints(P0, P1, p0, p1)
         
         # Convert homogeneous coordinates to 3D
         points_3d = points_4d[:3] / points_4d[3]
+
+        print(points_3d)
+        print("========================")
         
         # Apply 3D rotations
     #    points_3d = rotate_3d(points_3d, 'z', 45)
@@ -152,11 +168,20 @@ while True:
         # Plot the points
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
+
+        # Convert points_3d[2] multiply by 0.1
+        points_3d[2] = points_3d[2] * 0.1
+
+        # Get mean of points_3d[2]
+        mean_z = np.mean(points_3d[2])
+        print(f'It: {iteration} || Mean Z: {mean_z}')
+        
         ax.scatter(points_3d[0], points_3d[1], points_3d[2])
 
+
         # Initialize plot limits
-        ax.set_xlim([-10, 10])
-        ax.set_ylim([-10, 10])
+        ax.set_xlim([-100, 100])
+        ax.set_ylim([-100, 100])
         ax.set_zlim([0, 100])
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
@@ -180,9 +205,10 @@ while True:
     else:
         # If corners are not found in both frames, display the combined grayscale images
         combined_gray = np.hstack((gray0, gray1))
-        cv2.imshow('Chessboard Corners', combined_gray)
+        resized_combined_gray = cv2.resize(combined_gray, None, fx=0.5, fy=0.5)
+        cv2.imshow('Chessboard Corners', resized_combined_gray)
         
-    if cv2.waitKey(500) & 0xFF == ord('q'):
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap0.release()
