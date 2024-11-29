@@ -46,6 +46,16 @@ POSE_LANDMARKS = {
     28: 'PERGELENGAN_KAKI_KANAN',
 }
 
+POSE_CONNECTIONS = [
+    (11, 12),  # Shoulders
+    (11, 13), (13, 15),  # Left Arm
+    (12, 14), (14, 16),  # Right Arm
+    (11, 23), (12, 24),  # Torso
+    (23, 24),  # Hips
+    (23, 25), (25, 27),  # Left Leg
+    (24, 26), (26, 28),  # Right Leg
+]
+
 # ======================================== 3D FUNCTIONS ===============================================
 
 def rotate_3d(points, axis, angle):
@@ -105,6 +115,7 @@ def triangulate_points(landmarks0, landmarks1):
     p0_list = []
     p1_list = []
     idx_to_remove = []
+    detected_idx = []
 
     for idx in landmarks0:
         if idx in landmarks1:
@@ -114,6 +125,7 @@ def triangulate_points(landmarks0, landmarks1):
             if all(0 < p0[i] < [1280, 720][i] and 0 < p1[i] < [1280, 720][i] for i in range(2)):
                 p0_list.append(p0)
                 p1_list.append(p1)
+                detected_idx.append(idx)
             else:
                 idx_to_remove.append(idx)
 
@@ -133,7 +145,7 @@ def triangulate_points(landmarks0, landmarks1):
     point_3d = point_4d[:3] / point_4d[3]
     smoothed_point_3d = lpf.filter(point_3d)
 
-    return np.array(smoothed_point_3d), landmarks0, landmarks1
+    return np.array(smoothed_point_3d), landmarks0, landmarks1, detected_idx
 
 # ======================================== MAIN SCRIPT ================================================
 
@@ -172,6 +184,7 @@ ax.set_zlabel('Z')
 
 plt.ion()
 
+
 while True:
     ret, frame = cap.read()
     if not ret:
@@ -188,7 +201,7 @@ while True:
     landmarks0, landmarks1 = clean_landmarks(landmarks0, landmarks1)
 
     if landmarks0 and landmarks1:
-        points_3d, landmarks0, landmarks1 = triangulate_points(landmarks0, landmarks1)
+        points_3d, landmarks0, landmarks1, detected_idx = triangulate_points(landmarks0, landmarks1)
         if points_3d is None:
             continue
         
@@ -212,7 +225,34 @@ while True:
         points_3d[1] *= 0.1
         points_3d[2] *= -0.1
 
+        # Get mean of points_3d[2] 
+        mean_z = np.mean(points_3d[2])
+        print(mean_z)
+
         ax.scatter(points_3d[0], points_3d[1], points_3d[2], c='b', marker='o')
+
+        landmark_to_3d = {landmark: idx for idx, landmark in enumerate(detected_idx)}
+
+        # Connect the points using POSE_CONNECTIONS
+        for connection in POSE_CONNECTIONS:
+            start_idx, end_idx = connection
+
+            if start_idx in landmark_to_3d and end_idx in landmark_to_3d:
+                start_idx = landmark_to_3d[start_idx]
+                end_idx = landmark_to_3d[end_idx]
+
+                start_point = [points_3d[0][start_idx], points_3d[1][start_idx], points_3d[2][start_idx]]
+                end_point = [points_3d[0][end_idx], points_3d[1][end_idx], points_3d[2][end_idx]]
+
+                # Skip if points contain NaN
+                if not (np.isnan(start_point).any() or np.isnan(end_point).any()):
+                    ax.plot(
+                        [start_point[0], end_point[0]],  # X-coordinates
+                        [start_point[1], end_point[1]],  # Z-coordinates
+                        [start_point[2], end_point[2]],  # Y-coordinates
+                        c='r', linewidth=2
+                    )
+
         plt.pause(0.01)
 
     combined_gray = np.hstack((frame0, frame1))
